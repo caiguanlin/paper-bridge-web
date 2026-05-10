@@ -20,7 +20,5 @@ export interface QuestionTypeTemplate {
 
 export interface QuestionTypeTemplateCreate {
   name: string;
-  totalScore: number;
-  sortOrder?: number;
   items: QuestionTypeTemplateItem[];
 }

@@ -18,7 +18,6 @@ export function QuestionTypeTemplatePage() {
   const [editing, setEditing] = useState<QuestionTypeTemplate | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
-  const [totalScore, setTotalScore] = useState(100);
   const [items, setItems] = useState<QuestionTypeTemplateItem[]>([emptyItem()]);
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +25,6 @@ export function QuestionTypeTemplatePage() {
     () => items.reduce((sum, item) => sum + item.questionCount * item.scorePerQuestion, 0),
     [items]
   );
-  const isValidScore = subtotal === totalScore;
 
   const columns: ColumnsType<QuestionTypeTemplate> = [
     { title: '模板名称', dataIndex: 'name' },
@@ -65,7 +63,6 @@ export function QuestionTypeTemplatePage() {
   const openCreate = () => {
     setEditing(null);
     setTemplateName('');
-    setTotalScore(100);
     setItems([emptyItem()]);
     setModalOpen(true);
   };
@@ -73,7 +70,6 @@ export function QuestionTypeTemplatePage() {
   const openEdit = (template: QuestionTypeTemplate) => {
     setEditing(template);
     setTemplateName(template.name);
-    setTotalScore(Number(template.totalScore));
     setItems(template.items.map(item => ({ ...item, scorePerQuestion: Number(item.scorePerQuestion) })));
     setModalOpen(true);
   };
@@ -83,14 +79,10 @@ export function QuestionTypeTemplatePage() {
       message.error('请输入模板名称');
       return;
     }
-    if (!isValidScore) {
-      message.error('题型配置小计必须等于总分');
-      return;
-    }
 
     setLoading(true);
     try {
-      const payload: QuestionTypeTemplateCreate = { name: templateName.trim(), totalScore, items };
+      const payload: QuestionTypeTemplateCreate = { name: templateName.trim(), items };
       if (editing) {
         await questionTypeTemplateApi.update(editing.id, payload);
       } else {
@@ -154,10 +146,12 @@ export function QuestionTypeTemplatePage() {
           <Form.Item label="模板名称" required>
             <Input value={templateName} onChange={event => setTemplateName(event.target.value)} />
           </Form.Item>
-          <Form.Item label="总分" required>
-            <InputNumber min={1} value={totalScore} onChange={value => setTotalScore(value || 100)} />
-          </Form.Item>
-          <Card title="题型配置" size="small">
+
+          <Card 
+            title="题型配置" 
+            size="small"
+            extra={<span style={{ fontSize: '16px', fontWeight: 'bold' }}>总分：{subtotal} 分</span>}
+          >
             {items.map((item, index) => (
               <Space key={index} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
                 <Select
@@ -191,14 +185,7 @@ export function QuestionTypeTemplatePage() {
               + 新增题型
             </Button>
           </Card>
-          {!isValidScore && (
-            <Alert
-              type="warning"
-              showIcon
-              style={{ marginTop: 16 }}
-              message={`当前题型小计为 ${subtotal} 分，距离总分 ${totalScore} 分还差 ${Math.abs(totalScore - subtotal)} 分。`}
-            />
-          )}
+
         </Form>
       </Modal>
     </div>

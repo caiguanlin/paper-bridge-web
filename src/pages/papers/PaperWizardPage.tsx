@@ -10,6 +10,7 @@ import type { QuestionTypeTemplate } from '../../types/questionTypeTemplate';
 import { QUESTION_TYPES, QuestionType, GENERATION_STRATEGIES, GenerationStrategy } from '../../types/shared';
 import type { Difficulty, Subject } from '../../types/shared';
 import { getErrorMessage } from '../../utils/errors';
+import { TemplateSelectModal } from './TemplateSelectModal';
 
 export function PaperWizardPage() {
   const navigate = useNavigate();
@@ -17,32 +18,20 @@ export function PaperWizardPage() {
   const [baseInfo, setBaseInfo] = useState<Partial<PaperGenerateRequest>>({
     title: '', grade: '三年级', publisher: '人教版', subject: 'MATH', volume: '上册', unit: '第一单元', chapter: '测试'
   });
-  const [totalScore, setTotalScore] = useState(100);
   const [sections, setSections] = useState<PaperSectionConfig[]>([{ title: '选择题', questionType: QuestionType.SINGLE_CHOICE, questionCount: 10, scorePerQuestion: 5 }]);
   const [strategy, setStrategy] = useState<GenerationStrategy>(GenerationStrategy.BANK_WITH_AI);
   const [difficulty, setDifficulty] = useState<Difficulty | undefined>();
   const [previewData, setPreviewData] = useState<PaperPlanPreview | null>(null);
   const [loading, setLoading] = useState(false);
   const [treeData, setTreeData] = useState<CurriculumTreeNode[]>([]);
-  const [templates, setTemplates] = useState<QuestionTypeTemplate[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>();
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
+  const [selectTemplateOpen, setSelectTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
 
   const subtotal = useMemo(() => {
     return sections.reduce((acc, curr) => acc + (curr.questionCount * curr.scorePerQuestion), 0);
   }, [sections]);
 
-  const isValidScore = subtotal === totalScore;
-
-  const loadTemplates = async () => {
-    try {
-      const data = await questionTypeTemplateApi.list();
-      setTemplates(data);
-    } catch (error: unknown) {
-      message.error(getErrorMessage(error, '获取题型模板失败'));
-    }
-  };
 
   React.useEffect(() => {
     curriculumApi.getCurriculumTree().then(res => {
@@ -50,18 +39,9 @@ export function PaperWizardPage() {
     }).catch(error => {
       message.error(`获取教材树失败: ${getErrorMessage(error, '请求失败')}`);
     });
-    queueMicrotask(() => {
-      void loadTemplates();
-    });
   }, []);
 
-  const applyTemplate = (templateId: number) => {
-    const template = templates.find(item => item.id === templateId);
-    if (!template) {
-      return;
-    }
-    setSelectedTemplateId(templateId);
-    setTotalScore(Number(template.totalScore));
+  const applyTemplate = (template: QuestionTypeTemplate) => {
     setSections(template.items.map(item => ({
       title: item.title,
       questionType: item.questionType,
@@ -76,22 +56,16 @@ export function PaperWizardPage() {
       message.error('请输入模板名称');
       return;
     }
-    if (!isValidScore) {
-      message.error('题型配置小计必须等于总分');
-      return;
-    }
+
     setLoading(true);
     try {
-      const template = await questionTypeTemplateApi.create({
+      await questionTypeTemplateApi.create({
         name: templateName.trim(),
-        totalScore,
         items: sections
       });
       message.success('模板已保存');
       setSaveTemplateOpen(false);
       setTemplateName('');
-      await loadTemplates();
-      setSelectedTemplateId(template.id);
     } catch (error: unknown) {
       message.error(getErrorMessage(error, '保存模板失败'));
     } finally {
@@ -109,7 +83,7 @@ export function PaperWizardPage() {
 
     return {
       ...baseInfo,
-      totalScore,
+      totalScore: subtotal,
       strategy,
       difficulty,
       sections
@@ -151,7 +125,10 @@ export function PaperWizardPage() {
 
   return (
     <div className="page" style={{ maxWidth: 800, margin: '0 auto' }}>
-      <h2 style={{ marginBottom: 24 }}>生成试卷</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h2 style={{ margin: 0 }}>生成试卷</h2>
+        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>总分：{subtotal} 分</span>
+      </div>
 
       <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
         <Form layout="vertical">
@@ -186,28 +163,18 @@ export function PaperWizardPage() {
             />
           </Form.Item>
 
-          <Form.Item label="总分" required>
-            <InputNumber value={totalScore} onChange={(v) => setTotalScore(v || 100)} />
-          </Form.Item>
-          <Form.Item label="题型配置模板">
-            <Space.Compact style={{ width: '100%' }}>
-              <Select
-                allowClear
-                placeholder="选择模板后自动填充题型配置"
-                value={selectedTemplateId}
-                onChange={value => value ? applyTemplate(value) : setSelectedTemplateId(undefined)}
-                style={{ flex: 1 }}
-              >
-                {templates.map(template => (
-                  <Select.Option key={template.id} value={template.id}>
-                    {template.name}（{template.totalScore}分）
-                  </Select.Option>
-                ))}
-              </Select>
-              <Button onClick={() => setSaveTemplateOpen(true)}>保存为模板</Button>
-            </Space.Compact>
-          </Form.Item>
-          <Card title="题型配置" size="small" style={{ marginBottom: 16 }}>
+
+          <Card 
+            title="题型配置" 
+            size="small" 
+            style={{ marginBottom: 16 }}
+            extra={
+              <Space>
+                <Button onClick={() => setSaveTemplateOpen(true)}>保存为模板</Button>
+                <Button type="primary" onClick={() => setSelectTemplateOpen(true)}>选择题型配置模板</Button>
+              </Space>
+            }
+          >
             {sections.map((sec, index) => (
               <Space key={index} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
                 <Select value={sec.questionType} onChange={v => {
@@ -218,7 +185,6 @@ export function PaperWizardPage() {
                     newSecs[index].title = selectedType.label;
                   }
                   setSections(newSecs);
-                  setSelectedTemplateId(undefined);
                 }} style={{ width: 120 }}>
                   {QUESTION_TYPES.map(type => {
                     const isSelected = sections.some((s, sIndex) => sIndex !== index && s.questionType === type.value);
@@ -234,7 +200,6 @@ export function PaperWizardPage() {
                   const newSecs = [...sections];
                   newSecs[index].questionCount = v || 0;
                   setSections(newSecs);
-                  setSelectedTemplateId(undefined);
                 }} placeholder="题目数量" />
                 <span>题</span>
                 
@@ -242,7 +207,6 @@ export function PaperWizardPage() {
                   const newSecs = [...sections];
                   newSecs[index].scorePerQuestion = v || 0;
                   setSections(newSecs);
-                  setSelectedTemplateId(undefined);
                 }} placeholder="每题分值" />
                 <span>分</span>
 
@@ -253,7 +217,6 @@ export function PaperWizardPage() {
                     const newSecs = [...sections];
                     newSecs.splice(index, 1);
                     setSections(newSecs);
-                    setSelectedTemplateId(undefined);
                   }}
                 >
                   删除
@@ -267,7 +230,6 @@ export function PaperWizardPage() {
                 const availableType = QUESTION_TYPES.find(t => !sections.some(s => s.questionType === t.value));
                 if (availableType) {
                   setSections([...sections, { title: availableType.label, questionType: availableType.value, questionCount: 1, scorePerQuestion: 1 }]);
-                  setSelectedTemplateId(undefined);
                 }
               }}
               disabled={sections.length >= QUESTION_TYPES.length}
@@ -275,14 +237,6 @@ export function PaperWizardPage() {
               + 新增题型
             </Button>
           </Card>
-          {!isValidScore && (
-            <Alert 
-              message={`当前题型小计为 ${subtotal} 分，距离总分 ${totalScore} 分还差 ${Math.abs(totalScore - subtotal)} 分。`} 
-              type="warning" 
-              showIcon 
-              style={{ marginBottom: 16 }} 
-            />
-          )}
 
           <Form.Item label="生成策略" style={{ marginTop: 16 }}>
             <Select value={strategy} onChange={setStrategy} style={{ width: 300 }}>
@@ -325,8 +279,8 @@ export function PaperWizardPage() {
 
       <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
         <Space>
-          <Button onClick={handleNextToPreview} loading={loading} disabled={!isValidScore}>预览方案</Button>
-          <Button type="primary" onClick={handleGenerate} loading={loading} disabled={!isValidScore}>确认生成试卷</Button>
+          <Button onClick={handleNextToPreview} loading={loading}>预览方案</Button>
+          <Button type="primary" onClick={handleGenerate} loading={loading}>确认生成试卷</Button>
         </Space>
       </div>
 
@@ -342,12 +296,21 @@ export function PaperWizardPage() {
             <Input value={templateName} onChange={event => setTemplateName(event.target.value)} placeholder="例如：100分基础模板" />
           </Form.Item>
           <Alert
-            type={isValidScore ? 'info' : 'warning'}
+            type="info"
             showIcon
-            message={`当前题型小计为 ${subtotal} 分，总分为 ${totalScore} 分。`}
+            message={`当前题型小计总分为 ${subtotal} 分。`}
           />
         </Form>
       </Modal>
+
+      <TemplateSelectModal
+        open={selectTemplateOpen}
+        onCancel={() => setSelectTemplateOpen(false)}
+        onConfirm={(template) => {
+          applyTemplate(template);
+          setSelectTemplateOpen(false);
+        }}
+      />
     </div>
   );
 }
