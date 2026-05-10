@@ -73,7 +73,19 @@ export function PaperHistoryPage() {
       render: (_: unknown, record: PaperSummaryResponse) => `${record.unit} ${record.chapter || ''}`
     },
     { title: '总分', dataIndex: 'totalScore', key: 'totalScore' },
-    { title: '状态', dataIndex: 'status', key: 'status', render: (status: string) => <Tag color={status === 'DRAFT' ? 'blue' : 'green'}>{status}</Tag> },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      key: 'status',
+      render: (status: string) => (
+        <Tag
+          color={status === 'DRAFT' ? 'processing' : 'success'}
+          style={{ borderRadius: 9999 }}
+        >
+          {status}
+        </Tag>
+      ),
+    },
     { title: '更新时间', dataIndex: 'updatedAt', key: 'updatedAt' },
     {
       title: '操作',
@@ -96,8 +108,18 @@ export function PaperHistoryPage() {
   ];
 
   return (
-    <div className="page">
-      <h2 style={{ marginBottom: 16 }}>试卷历史</h2>
+    <div>
+      <h2
+        style={{
+          fontSize: 21,
+          fontWeight: 600,
+          color: '#1d1d1f',
+          letterSpacing: '0.231px',
+          marginBottom: 20,
+        }}
+      >
+        试卷历史
+      </h2>
       <Table columns={columns} dataSource={papers || []} rowKey="id" loading={isLoading} />
     </div>
   );

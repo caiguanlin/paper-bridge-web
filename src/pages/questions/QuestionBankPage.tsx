@@ -94,8 +94,54 @@ export function QuestionBankPage() {
   };
 
   return (
-    <div className="page">
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
+    <div>
+      {/* ── Page heading + toolbar ── */}
+      <div
+        style={{
+          marginBottom: 20,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <h2
+          style={{
+            fontSize: 21,
+            fontWeight: 600,
+            color: '#1d1d1f',
+            letterSpacing: '0.231px',
+            margin: 0,
+          }}
+        >
+          题库管理
+        </h2>
+        <Space>
+          <Button icon={<UploadOutlined />} onClick={() => setImportVisible(true)}>
+            Excel 导入
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setDrawerVisible(true)}
+            style={{ borderRadius: 9999 }}
+          >
+            新增题目
+          </Button>
+        </Space>
+      </div>
+
+      {/* ── Filters ── */}
+      <div
+        style={{
+          marginBottom: 16,
+          padding: '12px 16px',
+          background: '#fafafc',
+          borderRadius: 8,
+          border: '1px solid #f0f0f0',
+        }}
+      >
         <Space wrap>
           <Select 
             placeholder="年级" 
@@ -141,12 +187,9 @@ export function QuestionBankPage() {
           <Input placeholder="单元" allowClear style={{ width: 140 }} onChange={event => updateQuery({ unit: event.target.value || undefined })} />
           <Input placeholder="章节" allowClear style={{ width: 140 }} onChange={event => updateQuery({ chapter: event.target.value || undefined })} />
         </Space>
-        <Space>
-          <Button icon={<UploadOutlined />} onClick={() => setImportVisible(true)}>Excel 导入</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setDrawerVisible(true)}>新增题目</Button>
-        </Space>
       </div>
 
+      {/* ── Table ── */}
       <Table 
         columns={columns} 
         dataSource={questions || []} 
@@ -154,13 +197,23 @@ export function QuestionBankPage() {
         loading={isLoading}
       />
 
+      {/* ── Create Drawer ── */}
       <Drawer
         title="新增题目"
         placement="right"
         onClose={() => setDrawerVisible(false)}
         open={isDrawerVisible}
         size="large"
-        extra={<Button type="primary" loading={creating} onClick={handleCreateQuestion}>保存</Button>}
+        extra={
+          <Button
+            type="primary"
+            loading={creating}
+            onClick={handleCreateQuestion}
+            style={{ borderRadius: 9999 }}
+          >
+            保存
+          </Button>
+        }
       >
         <Form
           form={createForm}
@@ -235,11 +288,12 @@ export function QuestionBankPage() {
         </Form>
       </Drawer>
 
+      {/* ── Import Drawer ── */}
       <Drawer title="Excel 导入" placement="right" onClose={() => setImportVisible(false)} open={isImportVisible} size="default">
         <Upload customRequest={handleImport} showUploadList={false}>
           <Button icon={<UploadOutlined />}>选择 Excel 文件</Button>
         </Upload>
-        <p style={{ marginTop: 16, color: 'gray' }}>请上传符合模板格式的 Excel 文件</p>
+        <p style={{ marginTop: 16, color: '#7a7a7a', fontSize: 12 }}>请上传符合模板格式的 Excel 文件</p>
       </Drawer>
     </div>
   );

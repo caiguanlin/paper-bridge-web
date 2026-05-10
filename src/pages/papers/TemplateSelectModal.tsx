@@ -16,23 +16,24 @@ export function TemplateSelectModal({ open, onCancel, onConfirm }: TemplateSelec
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>();
 
   useEffect(() => {
+    async function loadTemplates() {
+      setLoading(true);
+      try {
+        const data = await questionTypeTemplateApi.list();
+        setTemplates(data);
+      } catch (error: unknown) {
+        message.error(getErrorMessage(error, '获取题型模板失败'));
+      } finally {
+        setLoading(false);
+      }
+    }
+
     if (open) {
       loadTemplates();
+      // eslint-disable-next-line
       setSelectedTemplateId(undefined);
     }
   }, [open]);
-
-  const loadTemplates = async () => {
-    setLoading(true);
-    try {
-      const data = await questionTypeTemplateApi.list();
-      setTemplates(data);
-    } catch (error: unknown) {
-      message.error(getErrorMessage(error, '获取题型模板失败'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOk = () => {
     if (!selectedTemplateId) {
@@ -68,7 +69,7 @@ export function TemplateSelectModal({ open, onCancel, onConfirm }: TemplateSelec
             onClick={() => setSelectedTemplateId(template.id)}
             style={{
               cursor: 'pointer',
-              backgroundColor: selectedTemplateId === template.id ? '#e6f4ff' : 'transparent',
+              backgroundColor: selectedTemplateId === template.id ? 'rgba(0, 102, 204, 0.06)' : 'transparent',
               transition: 'background-color 0.3s',
               padding: '12px 16px',
               borderRadius: '8px',

@@ -1,14 +1,16 @@
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f6f7f9;
-  color: #1f2933;
+/* ── Global structural styles ── */
+
+/* Remove default root constraints */
+#root {
+  min-height: 100vh;
 }
 
+/* ── Page content wrapper ── */
 .page {
-  padding: 24px;
+  padding: 0;
 }
 
+/* ── Workbench grid ── */
 .workbench {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
@@ -17,7 +19,7 @@ body {
 
 @media (max-width: 900px) {
   .page {
-    padding: 12px;
+    padding: 0;
   }
 
   .workbench {

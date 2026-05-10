@@ -244,13 +244,52 @@ export function PaperWizardPage() {
   };
 
   return (
-    <div className="page" style={{ maxWidth: 800, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ margin: 0 }}>生成试卷</h2>
-        <span style={{ fontSize: '18px', fontWeight: 'bold' }}>总分：{subtotal} 分</span>
+    <div style={{ maxWidth: 800, margin: '0 auto' }}>
+      {/* ── Header ── */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 24,
+        }}
+      >
+        <h2
+          style={{
+            fontSize: 21,
+            fontWeight: 600,
+            color: '#1d1d1f',
+            letterSpacing: '0.231px',
+            margin: 0,
+          }}
+        >
+          生成试卷
+        </h2>
+        <div
+          style={{
+            fontSize: 17,
+            fontWeight: 600,
+            color: '#1d1d1f',
+            letterSpacing: '-0.374px',
+            padding: '6px 16px',
+            background: '#fafafc',
+            borderRadius: 8,
+            border: '1px solid #f0f0f0',
+          }}
+        >
+          总分：{subtotal} 分
+        </div>
       </div>
 
-      <div style={{ background: '#fff', padding: 24, borderRadius: 8 }}>
+      {/* ── Form card ── */}
+      <div
+        style={{
+          background: '#fafafc',
+          padding: 24,
+          borderRadius: 12,
+          border: '1px solid #f0f0f0',
+        }}
+      >
         <Form layout="vertical">
           <Form.Item label="试卷标题" required>
             <Input 
@@ -352,19 +391,23 @@ export function PaperWizardPage() {
               description={`将使用「${baseInfo.grade} ${baseInfo.volume}」全部内容进行组卷，不限制单元和章节。`}
               type="info"
               showIcon
-              style={{ marginBottom: 16 }}
+              style={{ marginBottom: 16, borderRadius: 8 }}
             />
           )}
 
 
           <Card 
-            title="题型配置" 
+            title={
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1d1d1f' }}>
+                题型配置
+              </span>
+            }
             size="small" 
-            style={{ marginBottom: 16 }}
+            style={{ marginBottom: 16, borderRadius: 12, border: '1px solid #f0f0f0' }}
             extra={
               <Space>
-                <Button onClick={() => setSaveTemplateOpen(true)}>保存为模板</Button>
-                <Button type="primary" onClick={() => setSelectTemplateOpen(true)}>选择题型配置模板</Button>
+                <Button size="small" onClick={() => setSaveTemplateOpen(true)}>保存为模板</Button>
+                <Button size="small" type="primary" onClick={() => setSelectTemplateOpen(true)}>选择题型配置模板</Button>
               </Space>
             }
           >
@@ -394,14 +437,14 @@ export function PaperWizardPage() {
                   newSecs[index].questionCount = v || 0;
                   setSections(newSecs);
                 }} placeholder="题目数量" />
-                <span>题</span>
+                <span style={{ color: '#7a7a7a', fontSize: 12 }}>题</span>
                 
                 <InputNumber value={sec.scorePerQuestion} onChange={v => {
                   const newSecs = [...sections];
                   newSecs[index].scorePerQuestion = v || 0;
                   setSections(newSecs);
                 }} placeholder="每题分值" />
-                <span>分</span>
+                <span style={{ color: '#7a7a7a', fontSize: 12 }}>分</span>
 
                 <Button 
                   type="link" 
@@ -462,7 +505,7 @@ export function PaperWizardPage() {
                   message={`大题 ${sec.title}: 需出 ${sec.requiredCount} 题。题库可出 ${sec.availableBankCount} 题，AI需补充 ${sec.aiSupplementCount} 题。`} 
                   type="info" 
                   showIcon 
-                  style={{ marginBottom: 8 }} 
+                  style={{ marginBottom: 8, borderRadius: 8 }} 
                 />
               ))}
             </div>
@@ -470,10 +513,26 @@ export function PaperWizardPage() {
         </Form>
       </div>
 
-      <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-end' }}>
+      {/* ── Action bar ── */}
+      <div
+        style={{
+          marginTop: 24,
+          display: 'flex',
+          justifyContent: 'flex-end',
+        }}
+      >
         <Space>
-          <Button onClick={handleNextToPreview} loading={loading}>预览方案</Button>
-          <Button type="primary" onClick={handleGenerate} loading={loading}>确认生成试卷</Button>
+          <Button onClick={handleNextToPreview} loading={loading}>
+            预览方案
+          </Button>
+          <Button
+            type="primary"
+            onClick={handleGenerate}
+            loading={loading}
+            style={{ borderRadius: 9999 }}
+          >
+            确认生成试卷
+          </Button>
         </Space>
       </div>
 
@@ -492,6 +551,7 @@ export function PaperWizardPage() {
             type="info"
             showIcon
             message={`当前题型小计总分为 ${subtotal} 分。`}
+            style={{ borderRadius: 8 }}
           />
         </Form>
       </Modal>

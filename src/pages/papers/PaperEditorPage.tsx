@@ -74,7 +74,7 @@ const renderStem = (stem: string, questionType: QuestionType, version: 'student'
   }
 
   const icon = isCorrect === true ? <CheckOutlined /> : isCorrect === false ? <CloseOutlined /> : renderAnswer(answerJson);
-  const iconColor = isCorrect === false ? '#ff4d4f' : '#52c41a';
+  const iconColor = isCorrect === false ? '#ff3b30' : '#34c759';
 
   return (
     <div style={{ margin: 0, display: 'flex', justifyContent: 'space-between' }}>
@@ -199,23 +199,88 @@ export function PaperEditorPage() {
   }
 
   if (!paper) {
-    return <div style={{ padding: 48, textAlign: 'center' }}>试卷不存在或加载失败</div>;
+    return <div style={{ padding: 48, textAlign: 'center', color: '#7a7a7a' }}>试卷不存在或加载失败</div>;
   }
 
   return (
-    <Layout style={{ minHeight: 'calc(100vh - 64px)' }}>
-      <Sider width={250} theme="light" style={{ padding: 16, borderRight: '1px solid #f0f0f0' }}>
-        <h3>大纲与分值</h3>
+    <Layout style={{ minHeight: 'calc(100vh - 64px)', background: '#f5f5f7' }}>
+      {/* ── Sidebar: outline & scores ── */}
+      <Sider
+        width={240}
+        style={{
+          background: '#ffffff',
+          padding: 20,
+          borderRight: '1px solid #f0f0f0',
+        }}
+      >
+        <h3
+          style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: '#1d1d1f',
+            letterSpacing: '-0.224px',
+            marginBottom: 16,
+          }}
+        >
+          大纲与分值
+        </h3>
         {paper.sections?.map(sec => (
-          <p key={sec.id}>{sec.title} ({sec.subtotalScore}分)</p>
+          <div
+            key={sec.id}
+            style={{
+              padding: '8px 12px',
+              marginBottom: 6,
+              background: '#fafafc',
+              borderRadius: 8,
+              fontSize: 13,
+              color: '#333333',
+            }}
+          >
+            {sec.title}
+            <span style={{ float: 'right', color: '#7a7a7a' }}>{sec.subtotalScore}分</span>
+          </div>
         ))}
-        <div style={{ marginTop: 24, borderTop: '1px solid #f0f0f0', paddingTop: 16 }}>
-          <strong>总分: {paper.totalScore}分</strong>
+        <div
+          style={{
+            marginTop: 16,
+            borderTop: '1px solid #f0f0f0',
+            paddingTop: 16,
+            fontSize: 17,
+            fontWeight: 600,
+            color: '#1d1d1f',
+            letterSpacing: '-0.374px',
+          }}
+        >
+          总分: {paper.totalScore}分
         </div>
       </Sider>
-      <Content style={{ padding: 24, background: '#f0f2f5', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+
+      {/* ── Main content ── */}
+      <Content
+        style={{
+          padding: 24,
+          background: '#f5f5f7',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        {/* ── Toolbar ── */}
         <Affix offsetTop={64}>
-          <div style={{ background: '#fff', padding: '12px 24px', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: 24, display: 'flex', gap: 16, alignItems: 'center' }}>
+          <div
+            style={{
+              background: 'rgba(255, 255, 255, 0.85)',
+              backdropFilter: 'saturate(180%) blur(20px)',
+              WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+              padding: '10px 24px',
+              borderRadius: 12,
+              border: '1px solid #f0f0f0',
+              marginBottom: 24,
+              display: 'flex',
+              gap: 16,
+              alignItems: 'center',
+            }}
+          >
             <Radio.Group value={version} onChange={(e) => setVersion(e.target.value)}>
               <Radio.Button value="student">学生版</Radio.Button>
               <Radio.Button value="teacher">教师版</Radio.Button>
@@ -223,26 +288,64 @@ export function PaperEditorPage() {
             <Space>
               <Button onClick={handlePrint}>打印</Button>
               <Button onClick={handleExport}>导出 Word</Button>
-              <Button type="primary" onClick={handleSavePaper}>保存</Button>
+              <Button
+                type="primary"
+                onClick={handleSavePaper}
+                style={{ borderRadius: 9999 }}
+              >
+                保存
+              </Button>
             </Space>
           </div>
         </Affix>
 
-        <div className="paper-preview" style={{
-          width: '794px',
-          minHeight: '1123px',
-          background: '#fff',
-          padding: '48px',
-          boxShadow: '0 1px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h1 style={{ textAlign: 'center' }}>{paper.title}</h1>
-          <div style={{ textAlign: 'center', marginBottom: 24, color: 'gray' }}>
+        {/* ── Paper preview ── */}
+        <div
+          className="paper-preview"
+          style={{
+            width: '794px',
+            minHeight: '1123px',
+            background: '#ffffff',
+            padding: '48px',
+            borderRadius: 4,
+            border: '1px solid #f0f0f0',
+          }}
+        >
+          <h1
+            style={{
+              textAlign: 'center',
+              fontSize: 28,
+              fontWeight: 600,
+              color: '#1d1d1f',
+              letterSpacing: '-0.28px',
+            }}
+          >
+            {paper.title}
+          </h1>
+          <div
+            style={{
+              textAlign: 'center',
+              marginBottom: 24,
+              color: '#7a7a7a',
+              fontSize: 14,
+            }}
+          >
             {paper.grade} {paper.publisher} {paper.subject === 'MATH' ? '数学' : '语文'} {paper.volume}
           </div>
           
           {paper.sections?.map((sec, secIndex) => (
             <div key={sec.id} className="paper-section" style={{ marginBottom: 32 }}>
-              <h3>{['一', '二', '三', '四', '五', '六'][secIndex]}、{sec.title}（每题 {sec.scorePerQuestion} 分，共 {sec.subtotalScore} 分）</h3>
+              <h3
+                style={{
+                  fontSize: 17,
+                  fontWeight: 600,
+                  color: '#1d1d1f',
+                  letterSpacing: '-0.374px',
+                  marginBottom: 12,
+                }}
+              >
+                {['一', '二', '三', '四', '五', '六'][secIndex]}、{sec.title}（每题 {sec.scorePerQuestion} 分，共 {sec.subtotalScore} 分）
+              </h3>
               
               {sec.questions.map((q, qIndex) => (
                 <div key={q.id} className="paper-question" style={{ marginBottom: 16 }}>
@@ -252,9 +355,19 @@ export function PaperEditorPage() {
                     
                     {version === 'teacher' && (
                       <>
-                        <div style={{ marginTop: 12, padding: '8px 12px', background: '#f6ffed', border: '1px solid #b7eb8f', color: '#52c41a' }}>
+                        <div
+                          style={{
+                            marginTop: 12,
+                            padding: '8px 12px',
+                            background: 'rgba(52, 199, 89, 0.06)',
+                            border: '1px solid rgba(52, 199, 89, 0.2)',
+                            borderRadius: 8,
+                            color: '#34c759',
+                            fontSize: 13,
+                          }}
+                        >
                           <span>
-                            <strong style={{ color: '#389e0d' }}>【答案】</strong> 
+                            <strong style={{ color: '#248a3d' }}>【答案】</strong> 
                             {renderAnswer(q.answerSnapshotJson)}
                             {q.analysisSnapshot ? `。${q.analysisSnapshot}` : ''}
                           </span>
@@ -262,7 +375,7 @@ export function PaperEditorPage() {
                         <Tooltip title="存入题库">
                           <Button 
                             type="text" 
-                            icon={<SaveOutlined style={{ color: '#1890ff', fontSize: 16 }} />} 
+                            icon={<SaveOutlined style={{ color: '#0066cc', fontSize: 16 }} />} 
                             onClick={() => handleSaveToBank(q.id)}
                             style={{ position: 'absolute', right: 0, top: -4 }}
                           />
@@ -270,7 +383,7 @@ export function PaperEditorPage() {
                         <Tooltip title="编辑题目">
                           <Button
                             type="text"
-                            icon={<EditOutlined style={{ color: '#595959', fontSize: 16 }} />}
+                            icon={<EditOutlined style={{ color: '#7a7a7a', fontSize: 16 }} />}
                             onClick={() => openQuestionEditor(q)}
                             style={{ position: 'absolute', right: 32, top: -4 }}
                           />

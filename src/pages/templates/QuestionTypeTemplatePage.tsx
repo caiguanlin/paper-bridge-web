@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Alert, Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Table } from 'antd';
+import { Button, Card, Form, Input, InputNumber, message, Modal, Popconfirm, Select, Space, Table } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { questionTypeTemplateApi } from '../../api/questionTypeTemplateApi';
 import type { QuestionTypeTemplate, QuestionTypeTemplateCreate, QuestionTypeTemplateItem } from '../../types/questionTypeTemplate';
@@ -127,9 +127,33 @@ export function QuestionTypeTemplatePage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 style={{ margin: 0 }}>题型配置模板</h2>
-        <Button type="primary" onClick={openCreate}>新增模板</Button>
+      {/* ── Header ── */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 20,
+        }}
+      >
+        <h2
+          style={{
+            fontSize: 21,
+            fontWeight: 600,
+            color: '#1d1d1f',
+            letterSpacing: '0.231px',
+            margin: 0,
+          }}
+        >
+          题型配置模板
+        </h2>
+        <Button
+          type="primary"
+          onClick={openCreate}
+          style={{ borderRadius: 9999 }}
+        >
+          新增模板
+        </Button>
       </div>
 
       <Table rowKey="id" columns={columns} dataSource={templates} pagination={false} />
@@ -148,9 +172,27 @@ export function QuestionTypeTemplatePage() {
           </Form.Item>
 
           <Card 
-            title="题型配置" 
+            title={
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1d1d1f' }}>
+                题型配置
+              </span>
+            }
             size="small"
-            extra={<span style={{ fontSize: '16px', fontWeight: 'bold' }}>总分：{subtotal} 分</span>}
+            style={{ borderRadius: 12, border: '1px solid #f0f0f0' }}
+            extra={
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: '#1d1d1f',
+                  padding: '2px 12px',
+                  background: '#fafafc',
+                  borderRadius: 8,
+                }}
+              >
+                总分：{subtotal} 分
+              </div>
+            }
           >
             {items.map((item, index) => (
               <Space key={index} style={{ display: 'flex', marginBottom: 8 }} align="baseline">
@@ -173,9 +215,9 @@ export function QuestionTypeTemplatePage() {
                   ))}
                 </Select>
                 <InputNumber min={1} value={item.questionCount} onChange={value => updateItem(index, { questionCount: value || 1 })} />
-                <span>题</span>
+                <span style={{ color: '#7a7a7a', fontSize: 12 }}>题</span>
                 <InputNumber min={0.5} value={item.scorePerQuestion} onChange={value => updateItem(index, { scorePerQuestion: value || 1 })} />
-                <span>分</span>
+                <span style={{ color: '#7a7a7a', fontSize: 12 }}>分</span>
                 <Button danger type="link" onClick={() => setItems(items.filter((_, itemIndex) => itemIndex !== index))}>
                   删除
                 </Button>

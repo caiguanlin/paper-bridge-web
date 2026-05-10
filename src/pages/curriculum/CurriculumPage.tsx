@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { 
   Table, Button, Space, Modal, Form, Input, Select, 
-  Popconfirm, message, Card, InputNumber, Row, Col 
+  Popconfirm, message, InputNumber, Row, Col 
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { curriculumApi } from '../../api/curriculumApi';
@@ -135,8 +135,30 @@ export function CurriculumPage() {
   ];
 
   return (
-    <div style={{ padding: '0 0px' }}>
-      <Card style={{ marginBottom: 16 }}>
+    <div>
+      {/* ── Page heading ── */}
+      <h2
+        style={{
+          fontSize: 21,
+          fontWeight: 600,
+          color: '#1d1d1f',
+          letterSpacing: '0.231px',
+          marginBottom: 20,
+        }}
+      >
+        教材管理
+      </h2>
+
+      {/* ── Filter bar ── */}
+      <div
+        style={{
+          marginBottom: 16,
+          padding: '12px 16px',
+          background: '#fafafc',
+          borderRadius: 8,
+          border: '1px solid #f0f0f0',
+        }}
+      >
         <Form form={searchForm} layout="inline" onFinish={handleSearch}>
           <Form.Item name="publisher" label="出版社">
             <Input placeholder="请输入出版社" allowClear />
@@ -160,23 +182,28 @@ export function CurriculumPage() {
             </Space>
           </Form.Item>
         </Form>
-      </Card>
+      </div>
 
-      <Card>
-        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-            新增教材章节
-          </Button>
-        </div>
-        <Table
-          columns={columns}
-          dataSource={data}
-          rowKey="id"
-          loading={loading}
-          pagination={{ defaultPageSize: 10, showSizeChanger: true }}
-        />
-      </Card>
+      {/* ── Table ── */}
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleAdd}
+          style={{ borderRadius: 9999 }}
+        >
+          新增教材章节
+        </Button>
+      </div>
+      <Table
+        columns={columns}
+        dataSource={data}
+        rowKey="id"
+        loading={loading}
+        pagination={{ defaultPageSize: 10, showSizeChanger: true }}
+      />
 
+      {/* ── Modal ── */}
       <Modal
         title={editingId ? '编辑教材章节' : '新增教材章节'}
         open={isModalVisible}
