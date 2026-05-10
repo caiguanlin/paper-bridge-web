@@ -40,81 +40,144 @@ export function LoginPage() {
     <div
       style={{
         display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
         minHeight: '100vh',
-        background: '#f5f5f7',
+        background: '#ffffff',
+        fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
       }}
     >
-      <div style={{ width: 400 }}>
-        {/* ── Brand ── */}
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+      {/* ── Left Side (60%): Branding & Background ── */}
+      <div
+        style={{
+          flex: '0 0 60%',
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-end',
+          padding: '80px',
+          background: '#000',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundImage: "url('/assets/images/login-bg.png')",
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
+        />
+        {/* ── Gradient Overlay for Readability ── */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 60%, rgba(0,0,0,0) 100%)',
+            zIndex: 1,
+          }}
+        />
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            color: '#ffffff',
+            maxWidth: '600px',
+          }}
+        >
           <div
             style={{
               width: 56,
               height: 56,
               borderRadius: 14,
               background: '#0066cc',
-              display: 'inline-flex',
+              display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: '#fff',
               fontSize: 24,
               fontWeight: 600,
-              marginBottom: 16,
+              marginBottom: 24,
             }}
           >
             试
           </div>
           <h1
             style={{
-              fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
-              fontSize: 28,
+              fontSize: '48px',
               fontWeight: 600,
-              color: '#1d1d1f',
-              letterSpacing: '-0.28px',
-              lineHeight: 1.14,
-              margin: 0,
+              letterSpacing: '-0.02em',
+              lineHeight: 1.1,
+              margin: '0 0 16px 0',
+              color: '#ffffff',
             }}
           >
-            小学试卷生成系统
+            开启智能教学新时代
           </h1>
           <p
             style={{
-              marginTop: 8,
-              fontSize: 14,
-              color: '#7a7a7a',
-              letterSpacing: '-0.224px',
+              fontSize: '21px',
+              fontWeight: 400,
+              color: 'rgba(255, 255, 255, 0.85)',
+              margin: 0,
+              lineHeight: 1.4,
             }}
           >
-            教师智能组卷平台
+            为小学教师量身打造的试卷生成系统，让出卷变得更简单、更高效。
           </p>
         </div>
+      </div>
 
-        {/* ── Card ── */}
-        <Card
-          style={{
-            borderRadius: 18,
-            border: '1px solid #e0e0e0',
-            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.06)',
-          }}
-          styles={{ body: { padding: '32px 28px 24px' } }}
-        >
+      {/* ── Right Side (40%): Form ── */}
+      <div
+        style={{
+          flex: '0 0 40%',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          padding: '0 10%',
+          background: '#ffffff',
+        }}
+      >
+        <div style={{ maxWidth: '400px', width: '100%', margin: '0 auto' }}>
+          <div style={{ marginBottom: 40 }}>
+            <h2
+              style={{
+                fontSize: '34px',
+                fontWeight: 600,
+                color: '#1d1d1f',
+                letterSpacing: '-0.374px',
+                margin: '0 0 8px 0',
+              }}
+            >
+              {activeTab === 'login' ? '欢迎回来' : '开启试卷之旅'}
+            </h2>
+            <p style={{ color: '#7a7a7a', fontSize: '17px', margin: 0 }}>
+              请使用您的账号访问系统
+            </p>
+          </div>
+
           <Tabs
             activeKey={activeTab}
             onChange={setActiveTab}
-            centered
+            size="large"
             items={[
               {
                 key: 'login',
                 label: '登录',
                 children: (
-                  <Form onFinish={handleFinish} layout="vertical" style={{ marginTop: 8 }}>
+                  <Form onFinish={handleFinish} layout="vertical" style={{ marginTop: 24 }}>
                     <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
                       <Input
                         prefix={<UserOutlined style={{ color: '#7a7a7a' }} />}
                         placeholder="用户名"
                         size="large"
+                        style={{ borderRadius: 12, height: 48 }}
                       />
                     </Form.Item>
                     <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
@@ -122,6 +185,7 @@ export function LoginPage() {
                         prefix={<LockOutlined style={{ color: '#7a7a7a' }} />}
                         placeholder="密码"
                         size="large"
+                        style={{ borderRadius: 12, height: 48 }}
                       />
                     </Form.Item>
                     <Button
@@ -132,10 +196,12 @@ export function LoginPage() {
                       size="large"
                       style={{
                         borderRadius: 9999,
-                        height: 44,
-                        fontWeight: 400,
+                        height: 48,
+                        fontWeight: 500,
                         fontSize: 17,
-                        letterSpacing: '-0.374px',
+                        background: '#0066cc',
+                        marginTop: 12,
+                        border: 'none',
                       }}
                     >
                       登录
@@ -147,12 +213,13 @@ export function LoginPage() {
                 key: 'register',
                 label: '注册',
                 children: (
-                  <Form onFinish={handleFinish} layout="vertical" style={{ marginTop: 8 }}>
+                  <Form onFinish={handleFinish} layout="vertical" style={{ marginTop: 24 }}>
                     <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
                       <Input
                         prefix={<UserOutlined style={{ color: '#7a7a7a' }} />}
                         placeholder="用户名"
                         size="large"
+                        style={{ borderRadius: 12, height: 48 }}
                       />
                     </Form.Item>
                     <Form.Item name="displayName" rules={[{ required: true, message: '请输入显示名称' }]}>
@@ -160,6 +227,7 @@ export function LoginPage() {
                         prefix={<SmileOutlined style={{ color: '#7a7a7a' }} />}
                         placeholder="显示名称 (例如：张老师)"
                         size="large"
+                        style={{ borderRadius: 12, height: 48 }}
                       />
                     </Form.Item>
                     <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
@@ -167,6 +235,7 @@ export function LoginPage() {
                         prefix={<LockOutlined style={{ color: '#7a7a7a' }} />}
                         placeholder="密码"
                         size="large"
+                        style={{ borderRadius: 12, height: 48 }}
                       />
                     </Form.Item>
                     <Button
@@ -177,10 +246,12 @@ export function LoginPage() {
                       size="large"
                       style={{
                         borderRadius: 9999,
-                        height: 44,
-                        fontWeight: 400,
+                        height: 48,
+                        fontWeight: 500,
                         fontSize: 17,
-                        letterSpacing: '-0.374px',
+                        background: '#0066cc',
+                        marginTop: 12,
+                        border: 'none',
                       }}
                     >
                       注册
@@ -190,20 +261,18 @@ export function LoginPage() {
               },
             ]}
           />
-        </Card>
 
-        {/* ── Footer ── */}
-        <p
-          style={{
-            textAlign: 'center',
-            marginTop: 32,
-            fontSize: 12,
-            color: '#7a7a7a',
-            letterSpacing: '-0.12px',
-          }}
-        >
-          © 2026 小学试卷生成系统
-        </p>
+          <p
+            style={{
+              textAlign: 'center',
+              marginTop: 64,
+              fontSize: '12px',
+              color: '#7a7a7a',
+            }}
+          >
+            © 2026 小学试卷生成系统 · 豫ICP备12345678号
+          </p>
+        </div>
       </div>
     </div>
   );
