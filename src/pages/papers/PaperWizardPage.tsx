@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Form, Input, Button, Select, Space, Card, InputNumber, Alert, message, Cascader, Modal } from 'antd';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Form, Input, Button, Select, Space, Card, InputNumber, Alert, message, Modal } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { paperApi } from '../../api/paperApi';
 import { curriculumApi } from '../../api/curriculumApi';
@@ -12,11 +12,25 @@ import type { Difficulty, Subject } from '../../types/shared';
 import { getErrorMessage } from '../../utils/errors';
 import { TemplateSelectModal } from './TemplateSelectModal';
 
+/** 从树节点的 children 中提取某一层的 { label, value } 选项列表 */
+function getChildOptions(nodes: CurriculumTreeNode[] | undefined): { label: string; value: string }[] {
+  if (!nodes || nodes.length === 0) return [];
+  return nodes.map(n => ({ label: n.label, value: n.value }));
+}
+
+/** 在 children 中按 value 找到对应节点 */
+function findNode(nodes: CurriculumTreeNode[] | undefined, value: string | undefined): CurriculumTreeNode | undefined {
+  if (!nodes || !value) return undefined;
+  return nodes.find(n => n.value === value);
+}
+
+const SUBJECT_LABELS: Record<string, string> = { MATH: '数学', CHINESE: '语文' };
+
 export function PaperWizardPage() {
   const navigate = useNavigate();
 
   const [baseInfo, setBaseInfo] = useState<Partial<PaperGenerateRequest>>({
-    title: '', grade: '三年级', publisher: '人教版', subject: 'MATH', volume: '上册', unit: '第一单元', chapter: '测试'
+    title: '', grade: '', publisher: '', subject: undefined, volume: '', unit: '', chapters: []
   });
   const [sections, setSections] = useState<PaperSectionConfig[]>([{ title: '选择题', questionType: QuestionType.SINGLE_CHOICE, questionCount: 10, scorePerQuestion: 5 }]);
   const [strategy, setStrategy] = useState<GenerationStrategy>(GenerationStrategy.BANK_WITH_AI);
@@ -39,6 +53,45 @@ export function PaperWizardPage() {
     }).catch(error => {
       message.error(`获取教材树失败: ${getErrorMessage(error, '请求失败')}`);
     });
+  }, []);
+
+  // ── 联动下拉选项推导 ──
+  const publisherOptions = useMemo(() => getChildOptions(treeData), [treeData]);
+  const publisherNode = useMemo(() => findNode(treeData, baseInfo.publisher), [treeData, baseInfo.publisher]);
+
+  const subjectOptions = useMemo(() => getChildOptions(publisherNode?.children), [publisherNode]);
+  const subjectNode = useMemo(() => findNode(publisherNode?.children, baseInfo.subject), [publisherNode, baseInfo.subject]);
+
+  const gradeOptions = useMemo(() => getChildOptions(subjectNode?.children), [subjectNode]);
+  const gradeNode = useMemo(() => findNode(subjectNode?.children, baseInfo.grade), [subjectNode, baseInfo.grade]);
+
+  const volumeOptions = useMemo(() => getChildOptions(gradeNode?.children), [gradeNode]);
+  const volumeNode = useMemo(() => findNode(gradeNode?.children, baseInfo.volume), [gradeNode, baseInfo.volume]);
+
+  const unitOptions = useMemo(() => getChildOptions(volumeNode?.children), [volumeNode]);
+  const unitNode = useMemo(() => findNode(volumeNode?.children, baseInfo.unit), [volumeNode, baseInfo.unit]);
+
+  const chapterOptions = useMemo(() => getChildOptions(unitNode?.children), [unitNode]);
+
+  // ── 选中某一层时，清空其下层 ──
+  const updateField = useCallback((field: string, value: string | string[] | undefined) => {
+    const clearMap: Record<string, string[]> = {
+      publisher: ['subject', 'grade', 'volume', 'unit', 'chapters'],
+      subject: ['grade', 'volume', 'unit', 'chapters'],
+      grade: ['volume', 'unit', 'chapters'],
+      volume: ['unit', 'chapters'],
+      unit: ['chapters'],
+    };
+    const fieldsToClear = clearMap[field];
+    if (fieldsToClear) {
+      const patch: Record<string, unknown> = { [field]: value };
+      for (const f of fieldsToClear) {
+        patch[f] = f === 'chapters' ? [] : (f === 'subject' ? undefined : '');
+      }
+      setBaseInfo(prev => ({ ...prev, ...patch }));
+    } else {
+      setBaseInfo(prev => ({ ...prev, [field]: value }));
+    }
   }, []);
 
   const applyTemplate = (template: QuestionTypeTemplate) => {
@@ -74,10 +127,10 @@ export function PaperWizardPage() {
   };
 
   const buildPayload = () => {
-    const requiredFields = ['title', 'publisher', 'subject', 'grade', 'volume', 'unit', 'chapter'] as const;
+    const requiredFields = ['title', 'publisher', 'subject', 'grade', 'volume', 'unit'] as const;
     const hasMissingField = requiredFields.some(field => !baseInfo[field]);
-    if (hasMissingField) {
-      message.error('请完整填写试卷标题，并选择到具体教材章节');
+    if (hasMissingField || !baseInfo.chapters || baseInfo.chapters.length === 0) {
+      message.error('请完整填写试卷标题，并至少选择一个具体的教材章节');
       return null;
     }
 
@@ -139,27 +192,66 @@ export function PaperWizardPage() {
               placeholder="例如：2026年期中测试" 
             />
           </Form.Item>
+
           <Form.Item label="教材范围" required>
-            <Cascader
-              options={treeData}
-              changeOnSelect
-              placeholder="请选择教材范围（可细化到章节）"
-              value={[
-                baseInfo.publisher, baseInfo.subject, baseInfo.grade, 
-                baseInfo.volume, baseInfo.unit, baseInfo.chapter
-              ].filter(Boolean) as string[]}
-              onChange={(path) => {
-                setBaseInfo({
-                  ...baseInfo,
-                  publisher: (path[0] as string) || '',
-                  subject: (path[1] as Subject) || undefined,
-                  grade: (path[2] as string) || '',
-                  volume: (path[3] as string) || '',
-                  unit: (path[4] as string) || '',
-                  chapter: (path[5] as string) || '',
-                });
-              }}
+            <Space wrap style={{ width: '100%' }}>
+              <Select
+                value={baseInfo.publisher || undefined}
+                onChange={v => updateField('publisher', v)}
+                placeholder="出版社"
+                style={{ width: 120 }}
+                options={publisherOptions}
+                allowClear
+              />
+              <Select
+                value={baseInfo.subject || undefined}
+                onChange={v => updateField('subject', v)}
+                placeholder="学科"
+                style={{ width: 100 }}
+                options={subjectOptions.map(o => ({ ...o, label: SUBJECT_LABELS[o.value] || o.label }))}
+                disabled={!baseInfo.publisher}
+                allowClear
+              />
+              <Select
+                value={baseInfo.grade || undefined}
+                onChange={v => updateField('grade', v)}
+                placeholder="年级"
+                style={{ width: 110 }}
+                options={gradeOptions}
+                disabled={!baseInfo.subject}
+                allowClear
+              />
+              <Select
+                value={baseInfo.volume || undefined}
+                onChange={v => updateField('volume', v)}
+                placeholder="册别"
+                style={{ width: 100 }}
+                options={volumeOptions}
+                disabled={!baseInfo.grade}
+                allowClear
+              />
+              <Select
+                value={baseInfo.unit || undefined}
+                onChange={v => updateField('unit', v)}
+                placeholder="单元"
+                style={{ width: 130 }}
+                options={unitOptions}
+                disabled={!baseInfo.volume}
+                allowClear
+              />
+            </Space>
+          </Form.Item>
+
+          <Form.Item label="章节（可多选）" required>
+            <Select
+              mode="multiple"
+              value={baseInfo.chapters || []}
+              onChange={v => setBaseInfo(prev => ({ ...prev, chapters: v }))}
+              placeholder={baseInfo.unit ? '请选择章节' : '请先选择单元'}
               style={{ width: '100%' }}
+              options={chapterOptions}
+              disabled={!baseInfo.unit}
+              allowClear
             />
           </Form.Item>
 

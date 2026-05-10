@@ -14,7 +14,7 @@ export interface PaperGenerateRequest {
   subject: Subject;
   volume: string;
   unit: string;
-  chapter: string;
+  chapters: string[];
   totalScore: number;
   strategy: GenerationStrategy;
   difficulty?: Difficulty;
@@ -67,7 +67,7 @@ export interface PaperResponse {
   subject: Subject;
   volume: string;
   unit: string;
-  chapter: string;
+  chapters: string[];
   totalScore: number;
   status: 'DRAFT' | 'SAVED';
   updatedAt: string;
