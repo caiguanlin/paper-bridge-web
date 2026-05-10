@@ -34,6 +34,19 @@ export const GENERATION_STRATEGIES = [
   { value: GenerationStrategy.BANK_FIRST, label: '题库优先（兼容策略）' }
 ];
 
+export const ScopeType = {
+  CHAPTERS: 'CHAPTERS',
+  UNITS: 'UNITS',
+  VOLUME: 'VOLUME'
+} as const;
+export type ScopeType = typeof ScopeType[keyof typeof ScopeType];
+
+export const SCOPE_TYPES = [
+  { value: ScopeType.UNITS, label: '按单元（期中/复习）' },
+  { value: ScopeType.CHAPTERS, label: '按章节（精确选择）' },
+  { value: ScopeType.VOLUME, label: '整册（期末）' }
+];
+
 export type PaperVersion = 'student' | 'teacher';
 
 export type ApiResponse<T> = {

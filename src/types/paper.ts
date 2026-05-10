@@ -1,4 +1,4 @@
-import type { Subject, QuestionType, Difficulty, GenerationStrategy } from './shared';
+import type { Subject, QuestionType, Difficulty, GenerationStrategy, ScopeType } from './shared';
 
 export interface PaperSectionConfig {
   title: string;
@@ -7,14 +7,20 @@ export interface PaperSectionConfig {
   scorePerQuestion: number;
 }
 
+export interface ChapterScope {
+  unit: string;
+  chapter: string;
+}
+
 export interface PaperGenerateRequest {
   title: string;
   grade: string;
   publisher: string;
   subject: Subject;
   volume: string;
-  unit: string;
-  chapters: string[];
+  scopeType: ScopeType;
+  units?: string[];
+  chapters?: ChapterScope[];
   totalScore: number;
   strategy: GenerationStrategy;
   difficulty?: Difficulty;
@@ -67,7 +73,7 @@ export interface PaperResponse {
   subject: Subject;
   volume: string;
   unit: string;
-  chapters: string[];
+  chapter: string;
   totalScore: number;
   status: 'DRAFT' | 'SAVED';
   updatedAt: string;

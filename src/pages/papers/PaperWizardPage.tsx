@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Form, Input, Button, Select, Space, Card, InputNumber, Alert, message, Modal } from 'antd';
+import { Form, Input, Button, Select, Space, Card, InputNumber, Alert, message, Modal, TreeSelect, Radio } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { paperApi } from '../../api/paperApi';
 import { curriculumApi } from '../../api/curriculumApi';
 import { questionTypeTemplateApi } from '../../api/questionTypeTemplateApi';
-import type { PaperGenerateRequest, PaperPlanPreview, PaperSectionConfig } from '../../types/paper';
+import type { PaperGenerateRequest, PaperPlanPreview, PaperSectionConfig, ChapterScope } from '../../types/paper';
 import type { CurriculumTreeNode } from '../../types/curriculum';
 import type { QuestionTypeTemplate } from '../../types/questionTypeTemplate';
-import { QUESTION_TYPES, QuestionType, GENERATION_STRATEGIES, GenerationStrategy } from '../../types/shared';
+import { QUESTION_TYPES, QuestionType, GENERATION_STRATEGIES, GenerationStrategy, ScopeType, SCOPE_TYPES } from '../../types/shared';
 import type { Difficulty, Subject } from '../../types/shared';
 import { getErrorMessage } from '../../utils/errors';
 import { TemplateSelectModal } from './TemplateSelectModal';
@@ -24,14 +24,49 @@ function findNode(nodes: CurriculumTreeNode[] | undefined, value: string | undef
   return nodes.find(n => n.value === value);
 }
 
+/** 构造 TreeSelect 所需的树数据（单元 → 章节），用于 CHAPTERS 模式 */
+function buildChapterTreeData(volumeNode: CurriculumTreeNode | undefined) {
+  if (!volumeNode?.children) return [];
+  return volumeNode.children.map(unitNode => ({
+    title: unitNode.label,
+    value: `unit:${unitNode.value}`,
+    key: `unit:${unitNode.value}`,
+    selectable: false,
+    children: (unitNode.children || []).map(chapterNode => ({
+      title: chapterNode.label,
+      value: `${unitNode.value}||${chapterNode.value}`,
+      key: `${unitNode.value}||${chapterNode.value}`,
+    }))
+  }));
+}
+
+/** 从 TreeSelect 选中值解析出 ChapterScope[] */
+function parseChapterSelections(values: string[]): ChapterScope[] {
+  return values
+    .filter(v => !v.startsWith('unit:'))
+    .map(v => {
+      const [unit, chapter] = v.split('||');
+      return { unit, chapter };
+    });
+}
+
 const SUBJECT_LABELS: Record<string, string> = { MATH: '数学', CHINESE: '语文' };
 
 export function PaperWizardPage() {
   const navigate = useNavigate();
 
-  const [baseInfo, setBaseInfo] = useState<Partial<PaperGenerateRequest>>({
-    title: '', grade: '', publisher: '', subject: undefined, volume: '', unit: '', chapters: []
+  const [baseInfo, setBaseInfo] = useState<{
+    title: string;
+    grade: string;
+    publisher: string;
+    subject: Subject | undefined;
+    volume: string;
+  }>({
+    title: '', grade: '', publisher: '', subject: undefined, volume: ''
   });
+  const [scopeType, setScopeType] = useState<ScopeType>(ScopeType.UNITS);
+  const [selectedUnits, setSelectedUnits] = useState<string[]>([]);
+  const [selectedChapterKeys, setSelectedChapterKeys] = useState<string[]>([]);
   const [sections, setSections] = useState<PaperSectionConfig[]>([{ title: '选择题', questionType: QuestionType.SINGLE_CHOICE, questionCount: 10, scorePerQuestion: 5 }]);
   const [strategy, setStrategy] = useState<GenerationStrategy>(GenerationStrategy.BANK_WITH_AI);
   const [difficulty, setDifficulty] = useState<Difficulty | undefined>();
@@ -69,30 +104,40 @@ export function PaperWizardPage() {
   const volumeNode = useMemo(() => findNode(gradeNode?.children, baseInfo.volume), [gradeNode, baseInfo.volume]);
 
   const unitOptions = useMemo(() => getChildOptions(volumeNode?.children), [volumeNode]);
-  const unitNode = useMemo(() => findNode(volumeNode?.children, baseInfo.unit), [volumeNode, baseInfo.unit]);
-
-  const chapterOptions = useMemo(() => getChildOptions(unitNode?.children), [unitNode]);
+  const chapterTreeData = useMemo(() => buildChapterTreeData(volumeNode), [volumeNode]);
 
   // ── 选中某一层时，清空其下层 ──
-  const updateField = useCallback((field: string, value: string | string[] | undefined) => {
+  const updateField = useCallback((field: string, value: string | undefined) => {
     const clearMap: Record<string, string[]> = {
-      publisher: ['subject', 'grade', 'volume', 'unit', 'chapters'],
-      subject: ['grade', 'volume', 'unit', 'chapters'],
-      grade: ['volume', 'unit', 'chapters'],
-      volume: ['unit', 'chapters'],
-      unit: ['chapters'],
+      publisher: ['subject', 'grade', 'volume'],
+      subject: ['grade', 'volume'],
+      grade: ['volume'],
     };
     const fieldsToClear = clearMap[field];
     if (fieldsToClear) {
       const patch: Record<string, unknown> = { [field]: value };
       for (const f of fieldsToClear) {
-        patch[f] = f === 'chapters' ? [] : (f === 'subject' ? undefined : '');
+        patch[f] = f === 'subject' ? undefined : '';
       }
       setBaseInfo(prev => ({ ...prev, ...patch }));
+      // 清空范围选择
+      setSelectedUnits([]);
+      setSelectedChapterKeys([]);
     } else {
       setBaseInfo(prev => ({ ...prev, [field]: value }));
+      if (field === 'volume') {
+        setSelectedUnits([]);
+        setSelectedChapterKeys([]);
+      }
     }
   }, []);
+
+  const handleScopeTypeChange = (value: ScopeType) => {
+    setScopeType(value);
+    setSelectedUnits([]);
+    setSelectedChapterKeys([]);
+    setPreviewData(null);
+  };
 
   const applyTemplate = (template: QuestionTypeTemplate) => {
     setSections(template.items.map(item => ({
@@ -126,21 +171,43 @@ export function PaperWizardPage() {
     }
   };
 
-  const buildPayload = () => {
-    const requiredFields = ['title', 'publisher', 'subject', 'grade', 'volume', 'unit'] as const;
-    const hasMissingField = requiredFields.some(field => !baseInfo[field]);
-    if (hasMissingField || !baseInfo.chapters || baseInfo.chapters.length === 0) {
-      message.error('请完整填写试卷标题，并至少选择一个具体的教材章节');
+  const buildPayload = (): PaperGenerateRequest | null => {
+    const { title, publisher, subject, grade, volume } = baseInfo;
+    if (!title || !publisher || !subject || !grade || !volume) {
+      message.error('请完整填写试卷标题和教材范围');
       return null;
     }
 
-    return {
-      ...baseInfo,
+    const payload: PaperGenerateRequest = {
+      title,
+      grade,
+      publisher,
+      subject,
+      volume,
+      scopeType,
       totalScore: subtotal,
       strategy,
       difficulty,
       sections
-    } as PaperGenerateRequest;
+    };
+
+    if (scopeType === ScopeType.UNITS) {
+      if (selectedUnits.length === 0) {
+        message.error('请至少选择一个单元');
+        return null;
+      }
+      payload.units = selectedUnits;
+    } else if (scopeType === ScopeType.CHAPTERS) {
+      const chapters = parseChapterSelections(selectedChapterKeys);
+      if (chapters.length === 0) {
+        message.error('请至少选择一个章节');
+        return null;
+      }
+      payload.chapters = chapters;
+    }
+    // VOLUME 不需要 units/chapters
+
+    return payload;
   };
 
   const handleNextToPreview = async () => {
@@ -230,30 +297,64 @@ export function PaperWizardPage() {
                 disabled={!baseInfo.grade}
                 allowClear
               />
+            </Space>
+          </Form.Item>
+
+          <Form.Item label="组卷范围类型" required>
+            <Radio.Group
+              value={scopeType}
+              onChange={e => handleScopeTypeChange(e.target.value)}
+              optionType="button"
+              buttonStyle="solid"
+            >
+              {SCOPE_TYPES.map(st => (
+                <Radio.Button key={st.value} value={st.value}>{st.label}</Radio.Button>
+              ))}
+            </Radio.Group>
+          </Form.Item>
+
+          {scopeType === ScopeType.UNITS && (
+            <Form.Item label="选择单元（可多选）" required>
               <Select
-                value={baseInfo.unit || undefined}
-                onChange={v => updateField('unit', v)}
-                placeholder="单元"
-                style={{ width: 130 }}
+                mode="multiple"
+                value={selectedUnits}
+                onChange={v => { setSelectedUnits(v); setPreviewData(null); }}
+                placeholder={baseInfo.volume ? '请选择单元' : '请先选择册别'}
+                style={{ width: '100%' }}
                 options={unitOptions}
                 disabled={!baseInfo.volume}
                 allowClear
               />
-            </Space>
-          </Form.Item>
+            </Form.Item>
+          )}
 
-          <Form.Item label="章节（可多选）" required>
-            <Select
-              mode="multiple"
-              value={baseInfo.chapters || []}
-              onChange={v => setBaseInfo(prev => ({ ...prev, chapters: v }))}
-              placeholder={baseInfo.unit ? '请选择章节' : '请先选择单元'}
-              style={{ width: '100%' }}
-              options={chapterOptions}
-              disabled={!baseInfo.unit}
-              allowClear
+          {scopeType === ScopeType.CHAPTERS && (
+            <Form.Item label="选择章节（可跨单元多选）" required>
+              <TreeSelect
+                treeData={chapterTreeData}
+                value={selectedChapterKeys}
+                onChange={(v: string[]) => { setSelectedChapterKeys(v); setPreviewData(null); }}
+                placeholder={baseInfo.volume ? '请选择章节' : '请先选择册别'}
+                style={{ width: '100%' }}
+                treeCheckable
+                showCheckedStrategy={TreeSelect.SHOW_CHILD}
+                disabled={!baseInfo.volume}
+                allowClear
+                maxTagCount={5}
+                maxTagPlaceholder={omittedValues => `+${omittedValues.length} 章节`}
+              />
+            </Form.Item>
+          )}
+
+          {scopeType === ScopeType.VOLUME && baseInfo.volume && (
+            <Alert
+              message="整册范围"
+              description={`将使用「${baseInfo.grade} ${baseInfo.volume}」全部内容进行组卷，不限制单元和章节。`}
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
             />
-          </Form.Item>
+          )}
 
 
           <Card 

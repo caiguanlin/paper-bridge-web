@@ -70,7 +70,7 @@ export function PaperHistoryPage() {
     { 
       title: '单元/章节', 
       key: 'chapter',
-      render: (_: unknown, record: PaperSummaryResponse) => `${record.unit} ${(record.chapters || []).join(', ')}`
+      render: (_: unknown, record: PaperSummaryResponse) => `${record.unit} ${record.chapter || ''}`
     },
     { title: '总分', dataIndex: 'totalScore', key: 'totalScore' },
     { title: '状态', dataIndex: 'status', key: 'status', render: (status: string) => <Tag color={status === 'DRAFT' ? 'blue' : 'green'}>{status}</Tag> },
