@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import { Card, Form, Input, Button, Tabs, message } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authApi } from '../../api/authApi';
+import { getErrorMessage } from '../../utils/errors';
+
+type AuthFormValues = {
+  username: string;
+  password: string;
+  displayName?: string;
+};
 
 export function LoginPage() {
   const [activeTab, setActiveTab] = useState('login');
@@ -9,18 +16,20 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleFinish = async (values: any) => {
+  const handleFinish = async (values: AuthFormValues) => {
     setLoading(true);
     try {
-      const response = await (activeTab === 'login' ? authApi.login(values) : authApi.register(values));
+      const response = await (activeTab === 'login'
+        ? authApi.login({ username: values.username, password: values.password })
+        : authApi.register({ username: values.username, password: values.password, displayName: values.displayName || '' }));
       localStorage.setItem('teacher_token', response.token);
       localStorage.setItem('teacher_info', JSON.stringify(response));
       message.success(activeTab === 'login' ? '登录成功' : '注册成功');
       
       const from = location.state?.from?.pathname || '/';
       navigate(from, { replace: true });
-    } catch (error: any) {
-      message.error(error.message || '操作失败');
+    } catch (error: unknown) {
+      message.error(getErrorMessage(error, '操作失败'));
     } finally {
       setLoading(false);
     }

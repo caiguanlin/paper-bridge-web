@@ -74,6 +74,8 @@ export interface PaperResponse {
   sections?: PaperSectionResponse[];
 }
 
+export type PaperSummaryResponse = Omit<PaperResponse, 'sections'>;
+
 export interface QuestionSnapshotUpdate {
   stemSnapshot: string;
   contentSnapshotJson: string;

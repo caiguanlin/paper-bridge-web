@@ -21,10 +21,7 @@ export const questionApi = {
     return request<ImportResponse>({
       url: '/questions/import/excel',
       method: 'POST',
-      data: formData,
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+      data: formData
     });
   }
 };

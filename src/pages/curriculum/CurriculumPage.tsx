@@ -6,8 +6,16 @@ import {
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { curriculumApi } from '../../api/curriculumApi';
 import type { Curriculum, CurriculumCreate } from '../../types/curriculum';
+import { getErrorMessage } from '../../utils/errors';
 
 const { Option } = Select;
+
+type CurriculumQuery = {
+  publisher?: string;
+  subject?: string;
+  grade?: string;
+  volume?: string;
+};
 
 export function CurriculumPage() {
   const [data, setData] = useState<Curriculum[]>([]);
@@ -18,20 +26,22 @@ export function CurriculumPage() {
   const [searchForm] = Form.useForm();
   const [editForm] = Form.useForm();
 
-  const fetchList = async (values: any = {}) => {
+  const fetchList = async (values: CurriculumQuery = {}) => {
     setLoading(true);
     try {
       const res = await curriculumApi.getCurriculumList(values);
       setData(res);
-    } catch (err: any) {
-      message.error(err.message || '获取教材列表失败');
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, '获取教材列表失败'));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchList();
+    queueMicrotask(() => {
+      void fetchList();
+    });
   }, []);
 
   const handleSearch = () => {
@@ -70,8 +80,8 @@ export function CurriculumPage() {
       await curriculumApi.deleteCurriculum(id);
       message.success('删除成功');
       fetchList(searchForm.getFieldsValue());
-    } catch (err: any) {
-      message.error(err.message || '删除失败');
+    } catch (err: unknown) {
+      message.error(getErrorMessage(err, '删除失败'));
     }
   };
 
@@ -87,8 +97,8 @@ export function CurriculumPage() {
         }
         setIsModalVisible(false);
         fetchList(searchForm.getFieldsValue());
-      } catch (err: any) {
-        message.error(err.message || '保存失败');
+      } catch (err: unknown) {
+        message.error(getErrorMessage(err, '保存失败'));
       }
     });
   };
@@ -97,7 +107,7 @@ export function CurriculumPage() {
     { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
     { title: '出版社', dataIndex: 'publisher', key: 'publisher' },
     { title: '科目', dataIndex: 'subject', key: 'subject', 
-      render: (text: string) => text === 'CHINESE' ? '语文' : text === 'MATH' ? '数学' : text === 'ENGLISH' ? '英语' : text 
+      render: (text: string) => text === 'CHINESE' ? '语文' : text === 'MATH' ? '数学' : text 
     },
     { title: '年级', dataIndex: 'grade', key: 'grade' },
     { title: '册别', dataIndex: 'volume', key: 'volume' },
@@ -109,7 +119,7 @@ export function CurriculumPage() {
       title: '操作',
       key: 'action',
       width: 150,
-      render: (_: any, record: Curriculum) => (
+      render: (_: unknown, record: Curriculum) => (
         <Space size="middle">
           <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             编辑
@@ -135,7 +145,6 @@ export function CurriculumPage() {
             <Select placeholder="请选择科目" allowClear style={{ width: 120 }}>
               <Option value="CHINESE">语文</Option>
               <Option value="MATH">数学</Option>
-              <Option value="ENGLISH">英语</Option>
             </Select>
           </Form.Item>
           <Form.Item name="grade" label="年级">
@@ -188,7 +197,6 @@ export function CurriculumPage() {
                 <Select placeholder="请选择科目">
                   <Option value="CHINESE">语文</Option>
                   <Option value="MATH">数学</Option>
-                  <Option value="ENGLISH">英语</Option>
                 </Select>
               </Form.Item>
             </Col>

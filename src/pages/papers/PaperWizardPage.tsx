@@ -5,8 +5,11 @@ import { paperApi } from '../../api/paperApi';
 import { curriculumApi } from '../../api/curriculumApi';
 import { questionTypeTemplateApi } from '../../api/questionTypeTemplateApi';
 import type { PaperGenerateRequest, PaperPlanPreview, PaperSectionConfig } from '../../types/paper';
+import type { CurriculumTreeNode } from '../../types/curriculum';
 import type { QuestionTypeTemplate } from '../../types/questionTypeTemplate';
 import { QUESTION_TYPES, QuestionType, GENERATION_STRATEGIES, GenerationStrategy } from '../../types/shared';
+import type { Difficulty, Subject } from '../../types/shared';
+import { getErrorMessage } from '../../utils/errors';
 
 export function PaperWizardPage() {
   const navigate = useNavigate();
@@ -17,22 +20,14 @@ export function PaperWizardPage() {
   const [totalScore, setTotalScore] = useState(100);
   const [sections, setSections] = useState<PaperSectionConfig[]>([{ title: '选择题', questionType: QuestionType.SINGLE_CHOICE, questionCount: 10, scorePerQuestion: 5 }]);
   const [strategy, setStrategy] = useState<GenerationStrategy>(GenerationStrategy.BANK_WITH_AI);
+  const [difficulty, setDifficulty] = useState<Difficulty | undefined>();
   const [previewData, setPreviewData] = useState<PaperPlanPreview | null>(null);
   const [loading, setLoading] = useState(false);
-  const [treeData, setTreeData] = useState<any[]>([]);
+  const [treeData, setTreeData] = useState<CurriculumTreeNode[]>([]);
   const [templates, setTemplates] = useState<QuestionTypeTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | undefined>();
   const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [templateName, setTemplateName] = useState('');
-
-  React.useEffect(() => {
-    curriculumApi.getCurriculumTree().then(res => {
-      setTreeData(res);
-    }).catch(err => {
-      message.error('获取教材树失败: ' + err.message);
-    });
-    loadTemplates();
-  }, []);
 
   const subtotal = useMemo(() => {
     return sections.reduce((acc, curr) => acc + (curr.questionCount * curr.scorePerQuestion), 0);
@@ -44,10 +39,21 @@ export function PaperWizardPage() {
     try {
       const data = await questionTypeTemplateApi.list();
       setTemplates(data);
-    } catch (error: any) {
-      message.error(error.message || '获取题型模板失败');
+    } catch (error: unknown) {
+      message.error(getErrorMessage(error, '获取题型模板失败'));
     }
   };
+
+  React.useEffect(() => {
+    curriculumApi.getCurriculumTree().then(res => {
+      setTreeData(res);
+    }).catch(error => {
+      message.error(`获取教材树失败: ${getErrorMessage(error, '请求失败')}`);
+    });
+    queueMicrotask(() => {
+      void loadTemplates();
+    });
+  }, []);
 
   const applyTemplate = (templateId: number) => {
     const template = templates.find(item => item.id === templateId);
@@ -86,45 +92,58 @@ export function PaperWizardPage() {
       setTemplateName('');
       await loadTemplates();
       setSelectedTemplateId(template.id);
-    } catch (error: any) {
-      message.error(error.message || '保存模板失败');
+    } catch (error: unknown) {
+      message.error(getErrorMessage(error, '保存模板失败'));
     } finally {
       setLoading(false);
     }
   };
 
+  const buildPayload = () => {
+    const requiredFields = ['title', 'publisher', 'subject', 'grade', 'volume', 'unit', 'chapter'] as const;
+    const hasMissingField = requiredFields.some(field => !baseInfo[field]);
+    if (hasMissingField) {
+      message.error('请完整填写试卷标题，并选择到具体教材章节');
+      return null;
+    }
+
+    return {
+      ...baseInfo,
+      totalScore,
+      strategy,
+      difficulty,
+      sections
+    } as PaperGenerateRequest;
+  };
+
   const handleNextToPreview = async () => {
+    const payload = buildPayload();
+    if (!payload) {
+      return;
+    }
     setLoading(true);
     try {
-      const payload = {
-        ...baseInfo,
-        totalScore,
-        strategy,
-        sections
-      } as PaperGenerateRequest;
       const data = await paperApi.previewPlan(payload);
       setPreviewData(data);
-    } catch (e: any) {
-      message.error(e.message || '预览失败');
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e, '预览失败'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleGenerate = async () => {
+    const payload = buildPayload();
+    if (!payload) {
+      return;
+    }
     setLoading(true);
     try {
-      const payload = {
-        ...baseInfo,
-        totalScore,
-        strategy,
-        sections
-      } as PaperGenerateRequest;
       const data = await paperApi.generate(payload);
       message.success('生成成功');
       navigate(`/papers/${data.id}`);
-    } catch (e: any) {
-      message.error(e.message || '生成失败');
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e, '生成失败'));
     } finally {
       setLoading(false);
     }
@@ -156,7 +175,7 @@ export function PaperWizardPage() {
                 setBaseInfo({
                   ...baseInfo,
                   publisher: (path[0] as string) || '',
-                  subject: (path[1] as any) || undefined,
+                  subject: (path[1] as Subject) || undefined,
                   grade: (path[2] as string) || '',
                   volume: (path[3] as string) || '',
                   unit: (path[4] as string) || '',
@@ -272,6 +291,19 @@ export function PaperWizardPage() {
                   {strat.label}
                 </Select.Option>
               ))}
+            </Select>
+          </Form.Item>
+          <Form.Item label="难度偏好">
+            <Select
+              allowClear
+              placeholder="不限制难度"
+              value={difficulty}
+              onChange={setDifficulty}
+              style={{ width: 300 }}
+            >
+              <Select.Option value="EASY">简单</Select.Option>
+              <Select.Option value="MEDIUM">中等</Select.Option>
+              <Select.Option value="HARD">困难</Select.Option>
             </Select>
           </Form.Item>
 

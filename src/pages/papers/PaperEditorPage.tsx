@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Layout, Radio, Button, Space, Affix, message, Spin, Tooltip } from 'antd';
-import { SaveOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { Layout, Radio, Button, Space, Affix, message, Spin, Tooltip, Modal, Form, Input, InputNumber } from 'antd';
+import { SaveOutlined, CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { paperApi } from '../../api/paperApi';
 import { QuestionType } from '../../types/shared';
+import type { PaperQuestionResponse, QuestionSnapshotUpdate } from '../../types/paper';
+import { getErrorMessage } from '../../utils/errors';
 
 const renderContent = (jsonStr: string, questionType: QuestionType) => {
   if (!jsonStr) return null;
@@ -20,7 +22,7 @@ const renderContent = (jsonStr: string, questionType: QuestionType) => {
       );
     }
     return null;
-  } catch (e) {
+  } catch {
     return null;
   }
 };
@@ -39,7 +41,7 @@ const renderAnswer = (jsonStr: string) => {
     if (data.correctAnswer) return data.correctAnswer;
     if (data.answers && Array.isArray(data.answers)) return data.answers.join('；');
     return Object.values(data).join('，');
-  } catch (e) {
+  } catch {
     return jsonStr;
   }
 };
@@ -67,7 +69,9 @@ const renderStem = (stem: string, questionType: QuestionType, version: 'student'
     const valStr = String(val).toLowerCase();
     if (val === true || valStr === 'true' || valStr === '正确' || valStr === 't') isCorrect = true;
     if (val === false || valStr === 'false' || valStr === '错误' || valStr === 'f') isCorrect = false;
-  } catch (e) {}
+  } catch {
+    isCorrect = null;
+  }
 
   const icon = isCorrect === true ? <CheckOutlined /> : isCorrect === false ? <CloseOutlined /> : renderAnswer(answerJson);
   const iconColor = isCorrect === false ? '#ff4d4f' : '#52c41a';
@@ -82,9 +86,16 @@ const renderStem = (stem: string, questionType: QuestionType, version: 'student'
 
 const { Sider, Content } = Layout;
 
+const isFormValidationError = (error: unknown) => {
+  return typeof error === 'object' && error !== null && 'errorFields' in error;
+};
+
 export function PaperEditorPage() {
   const { paperId } = useParams();
   const [version, setVersion] = useState<'student' | 'teacher'>('teacher');
+  const [editForm] = Form.useForm<QuestionSnapshotUpdate>();
+  const [editingQuestion, setEditingQuestion] = useState<PaperQuestionResponse | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const { data: paper, isLoading, refetch } = useQuery({
     queryKey: ['paper', paperId],
@@ -96,8 +107,61 @@ export function PaperEditorPage() {
     try {
       await paperApi.saveToBank(paperId as string, questionId);
       message.success('已存入题库');
-    } catch (e: any) {
-      message.error(e.message || '存入失败');
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e, '存入失败'));
+    }
+  };
+
+  const handleSavePaper = async () => {
+    try {
+      await paperApi.savePaper(paperId as string);
+      message.success('试卷已保存');
+      await refetch();
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e, '保存失败'));
+    }
+  };
+
+  const openQuestionEditor = (question: PaperQuestionResponse) => {
+    setEditingQuestion(question);
+    editForm.setFieldsValue({
+      stemSnapshot: question.stemSnapshot,
+      contentSnapshotJson: question.contentSnapshotJson,
+      answerSnapshotJson: question.answerSnapshotJson,
+      analysisSnapshot: question.analysisSnapshot,
+      score: question.score
+    });
+  };
+
+  const validateJsonObject = (_: unknown, value?: string) => {
+    try {
+      const parsed = JSON.parse(value || '');
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return Promise.resolve();
+      }
+      return Promise.reject(new Error('请输入 JSON 对象字符串'));
+    } catch {
+      return Promise.reject(new Error('请输入合法 JSON'));
+    }
+  };
+
+  const handleUpdateQuestion = async () => {
+    if (!editingQuestion) {
+      return;
+    }
+    setSaving(true);
+    try {
+      const values = await editForm.validateFields();
+      await paperApi.updateQuestion(paperId as string, editingQuestion.id, values);
+      message.success('题目已更新');
+      setEditingQuestion(null);
+      await refetch();
+    } catch (e: unknown) {
+      if (!isFormValidationError(e)) {
+        message.error(getErrorMessage(e, '更新失败'));
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -109,8 +173,8 @@ export function PaperEditorPage() {
         printWindow.document.write(html);
         printWindow.document.close();
       }
-    } catch (e: any) {
-      message.error(e.message || '打印失败');
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e, '打印失败'));
     }
   };
 
@@ -125,8 +189,8 @@ export function PaperEditorPage() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (e: any) {
-      message.error(e.message || '导出失败');
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e, '导出失败'));
     }
   };
 
@@ -159,7 +223,7 @@ export function PaperEditorPage() {
             <Space>
               <Button onClick={handlePrint}>打印</Button>
               <Button onClick={handleExport}>导出 Word</Button>
-              <Button type="primary">保存</Button>
+              <Button type="primary" onClick={handleSavePaper}>保存</Button>
             </Space>
           </div>
         </Affix>
@@ -203,6 +267,14 @@ export function PaperEditorPage() {
                             style={{ position: 'absolute', right: 0, top: -4 }}
                           />
                         </Tooltip>
+                        <Tooltip title="编辑题目">
+                          <Button
+                            type="text"
+                            icon={<EditOutlined style={{ color: '#595959', fontSize: 16 }} />}
+                            onClick={() => openQuestionEditor(q)}
+                            style={{ position: 'absolute', right: 32, top: -4 }}
+                          />
+                        </Tooltip>
                       </>
                     )}
                   </div>
@@ -212,6 +284,41 @@ export function PaperEditorPage() {
           ))}
         </div>
       </Content>
+      <Modal
+        title="编辑试卷题目"
+        open={!!editingQuestion}
+        onCancel={() => setEditingQuestion(null)}
+        onOk={handleUpdateQuestion}
+        confirmLoading={saving}
+        width={720}
+        destroyOnClose
+      >
+        <Form form={editForm} layout="vertical">
+          <Form.Item name="stemSnapshot" label="题干" rules={[{ required: true, message: '请输入题干' }]}>
+            <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item
+            name="contentSnapshotJson"
+            label="题目内容 JSON"
+            rules={[{ required: true, message: '请输入题目内容 JSON' }, { validator: validateJsonObject }]}
+          >
+            <Input.TextArea rows={4} />
+          </Form.Item>
+          <Form.Item
+            name="answerSnapshotJson"
+            label="答案 JSON"
+            rules={[{ required: true, message: '请输入答案 JSON' }, { validator: validateJsonObject }]}
+          >
+            <Input.TextArea rows={4} />
+          </Form.Item>
+          <Form.Item name="analysisSnapshot" label="解析">
+            <Input.TextArea rows={3} />
+          </Form.Item>
+          <Form.Item name="score" label="分值" rules={[{ required: true, message: '请输入分值' }]}>
+            <InputNumber min={0.5} style={{ width: '100%' }} />
+          </Form.Item>
+        </Form>
+      </Modal>
     </Layout>
   );
 }

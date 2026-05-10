@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // 定义接口返回类型
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data: T;
   message: string | null;
@@ -13,6 +13,27 @@ const http = axios.create({
   timeout: 60000,
 });
 
+const readBlobErrorMessage = async (data: unknown) => {
+  if (!(data instanceof Blob)) {
+    return null;
+  }
+
+  try {
+    const text = await data.text();
+    if (!text) {
+      return null;
+    }
+    const parsed = JSON.parse(text);
+    return typeof parsed?.message === 'string' ? parsed.message : null;
+  } catch {
+    return null;
+  }
+};
+
+const hasMessage = (data: unknown): data is { message: string } => {
+  return typeof data === 'object' && data !== null && 'message' in data && typeof data.message === 'string';
+};
+
 // 请求拦截器
 http.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -22,7 +43,7 @@ http.interceptors.request.use(
     }
     return config;
   },
-  (error: any) => {
+  (error: unknown) => {
     return Promise.reject(error);
   }
 );
@@ -48,16 +69,20 @@ http.interceptors.response.use(
     // 兼容其他返回格式（比如 HTML 打印）
     return res;
   },
-  (error: any) => {
+  async (error: unknown) => {
+    const axiosError = axios.isAxiosError(error) ? error : null;
     let message = '请求失败';
-    if (error.response?.data?.message) {
-      message = error.response.data.message;
-    } else if (error.message) {
+    const blobMessage = await readBlobErrorMessage(axiosError?.response?.data);
+    if (blobMessage) {
+      message = blobMessage;
+    } else if (hasMessage(axiosError?.response?.data)) {
+      message = axiosError.response.data.message;
+    } else if (error instanceof Error && error.message) {
       message = error.message;
     }
 
     // 处理 401 和 403 认证或授权失败的问题
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+    if (axiosError?.response && (axiosError.response.status === 401 || axiosError.response.status === 403)) {
       message = '认证失败或登录已过期，请重新登录';
       // 清除本地过期的 token 
       localStorage.removeItem('teacher_token');

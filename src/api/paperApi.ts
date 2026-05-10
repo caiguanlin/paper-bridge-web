@@ -1,5 +1,5 @@
 import { request } from './http';
-import type { PaperGenerateRequest, PaperPlanPreview, PaperResponse, QuestionSnapshotUpdate } from '../types/paper';
+import type { PaperGenerateRequest, PaperPlanPreview, PaperResponse, PaperSummaryResponse, QuestionSnapshotUpdate } from '../types/paper';
 import type { QuestionResponse } from '../types/question';
 
 export const paperApi = {
@@ -15,7 +15,7 @@ export const paperApi = {
     data
   }),
   
-  getPapers: () => request<PaperResponse[]>({
+  getPapers: () => request<PaperSummaryResponse[]>({
     url: '/papers',
     method: 'GET'
   }),
@@ -42,7 +42,10 @@ export const paperApi = {
     request<string>({
       url: `/papers/${paperId}/print?version=${version}`,
       method: 'GET',
-      responseType: 'text'
+      responseType: 'text',
+      headers: {
+        Accept: 'text/html'
+      }
     }),
     
   exportWord: (paperId: number | string, version: 'student' | 'teacher' = 'student') => 
@@ -50,5 +53,29 @@ export const paperApi = {
       url: `/papers/${paperId}/export/word?version=${version}`,
       method: 'POST',
       responseType: 'blob'
+    }),
+
+  copyPaper: (paperId: number | string) => 
+    request<PaperResponse>({
+      url: `/papers/${paperId}/copy`,
+      method: 'POST'
+    }),
+
+  regeneratePaper: (paperId: number | string) => 
+    request<PaperResponse>({
+      url: `/papers/${paperId}/regenerate`,
+      method: 'POST'
+    }),
+
+  savePaper: (paperId: number | string) => 
+    request<null>({
+      url: `/papers/${paperId}/save`,
+      method: 'POST'
+    }),
+
+  deletePaper: (paperId: number | string) => 
+    request<null>({
+      url: `/papers/${paperId}`,
+      method: 'DELETE'
     })
 };

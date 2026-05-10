@@ -1,13 +1,15 @@
 import React from 'react';
-import { Table, Space, Tag, message } from 'antd';
+import { Button, Popconfirm, Space, Table, Tag, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { paperApi } from '../../api/paperApi';
+import type { PaperSummaryResponse } from '../../types/paper';
+import { getErrorMessage } from '../../utils/errors';
 
 export function PaperHistoryPage() {
   const navigate = useNavigate();
 
-  const { data: papers, isLoading } = useQuery({
+  const { data: papers, isLoading, refetch } = useQuery({
     queryKey: ['papers'],
     queryFn: () => paperApi.getPapers()
   });
@@ -23,8 +25,38 @@ export function PaperHistoryPage() {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch (e: any) {
-      message.error(e.message || '导出失败');
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e, '导出失败'));
+    }
+  };
+
+  const handleCopy = async (paperId: string | number) => {
+    try {
+      const copied = await paperApi.copyPaper(paperId);
+      message.success('复制成功');
+      navigate(`/papers/${copied.id}`);
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e, '复制失败'));
+    }
+  };
+
+  const handleRegenerate = async (paperId: string | number) => {
+    try {
+      const regenerated = await paperApi.regeneratePaper(paperId);
+      message.success('重新组卷成功');
+      navigate(`/papers/${regenerated.id}`);
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e, '重新组卷失败'));
+    }
+  };
+
+  const handleDelete = async (paperId: string | number) => {
+    try {
+      await paperApi.deletePaper(paperId);
+      message.success('删除成功');
+      await refetch();
+    } catch (e: unknown) {
+      message.error(getErrorMessage(e, '删除失败'));
     }
   };
 
@@ -33,12 +65,12 @@ export function PaperHistoryPage() {
     { 
       title: '年级/出版社/科目', 
       key: 'scope',
-      render: (_: any, record: any) => `${record.grade} ${record.publisher} ${record.subject === 'MATH' ? '数学' : '语文'}`
+      render: (_: unknown, record: PaperSummaryResponse) => `${record.grade} ${record.publisher} ${record.subject === 'MATH' ? '数学' : '语文'}`
     },
     { 
       title: '单元/章节', 
       key: 'chapter',
-      render: (_: any, record: any) => `${record.unit} ${record.chapter}`
+      render: (_: unknown, record: PaperSummaryResponse) => `${record.unit} ${record.chapter}`
     },
     { title: '总分', dataIndex: 'totalScore', key: 'totalScore' },
     { title: '状态', dataIndex: 'status', key: 'status', render: (status: string) => <Tag color={status === 'DRAFT' ? 'blue' : 'green'}>{status}</Tag> },
@@ -46,11 +78,18 @@ export function PaperHistoryPage() {
     {
       title: '操作',
       key: 'action',
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: PaperSummaryResponse) => (
         <Space size="middle">
           <a onClick={() => navigate(`/papers/${record.id}`)}>编辑</a>
           <a onClick={() => handleExport(record.id, 'student')}>导出学生版</a>
           <a onClick={() => handleExport(record.id, 'teacher')}>导出教师版</a>
+          <a onClick={() => handleCopy(record.id)}>复制</a>
+          <Popconfirm title="重新组卷会创建一份新试卷，确认继续？" onConfirm={() => handleRegenerate(record.id)}>
+            <Button type="link" style={{ padding: 0 }}>重新组卷</Button>
+          </Popconfirm>
+          <Popconfirm title="确认删除这份试卷？" onConfirm={() => handleDelete(record.id)}>
+            <Button type="link" danger style={{ padding: 0 }}>删除</Button>
+          </Popconfirm>
         </Space>
       ),
     },

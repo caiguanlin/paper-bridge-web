@@ -22,14 +22,16 @@ export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 export const GenerationStrategy = {
   BANK_ONLY: 'BANK_ONLY',
   BANK_WITH_AI: 'BANK_WITH_AI',
-  AI_ONLY: 'AI_ONLY'
+  AI_ONLY: 'AI_ONLY',
+  BANK_FIRST: 'BANK_FIRST'
 } as const;
 export type GenerationStrategy = typeof GenerationStrategy[keyof typeof GenerationStrategy];
 
 export const GENERATION_STRATEGIES = [
   { value: GenerationStrategy.BANK_ONLY, label: '仅使用题库（数量不足会提示）' },
   { value: GenerationStrategy.BANK_WITH_AI, label: '题库优先，不足时AI补充' },
-  { value: GenerationStrategy.AI_ONLY, label: '全部由AI生成' }
+  { value: GenerationStrategy.AI_ONLY, label: '全部由AI生成' },
+  { value: GenerationStrategy.BANK_FIRST, label: '题库优先（兼容策略）' }
 ];
 
 export type PaperVersion = 'student' | 'teacher';

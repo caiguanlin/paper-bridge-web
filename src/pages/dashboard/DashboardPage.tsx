@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card as AntCard, Statistic as AntStatistic, Row as AntRow, Col as AntCol, Button as AntButton } from 'antd';
+import { Card as AntCard, Statistic as AntStatistic, Row as AntRow, Col as AntCol } from 'antd';
 import { FileTextOutlined, DatabaseOutlined, HistoryOutlined } from '@ant-design/icons';
 
 export function DashboardPage() {

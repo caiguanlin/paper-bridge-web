@@ -4,6 +4,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { questionTypeTemplateApi } from '../../api/questionTypeTemplateApi';
 import type { QuestionTypeTemplate, QuestionTypeTemplateCreate, QuestionTypeTemplateItem } from '../../types/questionTypeTemplate';
 import { QUESTION_TYPES, QuestionType } from '../../types/shared';
+import { getErrorMessage } from '../../utils/errors';
 
 const emptyItem = (): QuestionTypeTemplateItem => ({
   title: '选择题',
@@ -20,10 +21,6 @@ export function QuestionTypeTemplatePage() {
   const [totalScore, setTotalScore] = useState(100);
   const [items, setItems] = useState<QuestionTypeTemplateItem[]>([emptyItem()]);
   const [loading, setLoading] = useState(false);
-
-  React.useEffect(() => {
-    loadTemplates();
-  }, []);
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + item.questionCount * item.scorePerQuestion, 0),
@@ -54,10 +51,16 @@ export function QuestionTypeTemplatePage() {
     }
   ];
 
-  const loadTemplates = async () => {
+  async function loadTemplates() {
     const data = await questionTypeTemplateApi.list();
     setTemplates(data);
-  };
+  }
+
+  React.useEffect(() => {
+    queueMicrotask(() => {
+      void loadTemplates();
+    });
+  }, []);
 
   const openCreate = () => {
     setEditing(null);
@@ -96,17 +99,21 @@ export function QuestionTypeTemplatePage() {
       message.success('保存成功');
       setModalOpen(false);
       await loadTemplates();
-    } catch (error: any) {
-      message.error(error.message || '保存失败');
+    } catch (error: unknown) {
+      message.error(getErrorMessage(error, '保存失败'));
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    await questionTypeTemplateApi.delete(id);
-    message.success('删除成功');
-    await loadTemplates();
+    try {
+      await questionTypeTemplateApi.delete(id);
+      message.success('删除成功');
+      await loadTemplates();
+    } catch (error: unknown) {
+      message.error(getErrorMessage(error, '删除失败'));
+    }
   };
 
   const updateItem = (index: number, patch: Partial<QuestionTypeTemplateItem>) => {
